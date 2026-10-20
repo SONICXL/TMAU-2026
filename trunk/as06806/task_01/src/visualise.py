@@ -1,3 +1,4 @@
+
 import csv
 import sys
 import shutil
@@ -8,17 +9,34 @@ from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 
 
-def main():
-    script_dir = Path(__file__).resolve().parent
-
+def resolve_csv_path(script_dir):
     if len(sys.argv) > 1:
         csv_path = Path(sys.argv[1])
+
         if not csv_path.is_absolute():
             csv_path = script_dir / csv_path
     else:
         csv_path = script_dir / "result.csv"
 
-    if not csv_path.exists():
+    csv_path = csv_path.resolve()
+    allowed_dir = script_dir.resolve()
+
+    if not csv_path.is_relative_to(allowed_dir):
+        raise ValueError("Путь к CSV должен находиться в папке src.")
+
+    return csv_path
+
+
+def main():
+    script_dir = Path(__file__).resolve().parent
+
+    try:
+        csv_path = resolve_csv_path(script_dir)
+    except (ValueError, OSError) as error:
+        print(f"Ошибка пути: {error}")
+        return 1
+
+    if not csv_path.is_file():
         print(f"Ошибка: файл {csv_path} не найден.")
         return 1
 
@@ -29,9 +47,13 @@ def main():
         print("Ошибка: CSV-файл не содержит результатов.")
         return 1
 
-    steps = [int(row["step"]) for row in rows]
-    inputs = [float(row["u_tau"]) for row in rows]
-    outputs = [float(row["y_next"]) for row in rows]
+    try:
+        steps = [int(row["step"]) for row in rows]
+        inputs = [float(row["u_tau"]) for row in rows]
+        outputs = [float(row["y_next"]) for row in rows]
+    except (KeyError, ValueError) as error:
+        print(f"Ошибка: некорректные данные CSV: {error}")
+        return 1
 
     model = rows[0]["model"]
     signal = rows[0]["signal"]
@@ -60,14 +82,16 @@ def main():
     fig, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
 
     if signal == "Harmonic":
-        # гладкая синусоида sin(tau) + дискретные значения u(tau) точками
-        # шаг k соответствует tau = k - 1
         t = np.linspace(0, steps[-1] - 1, 500)
-        axes[0].plot(t + 1, np.sin(t), "--", linewidth=1, alpha=0.6, label="sin(τ)")
+        axes[0].plot(
+            t + 1, np.sin(t), "--",
+            linewidth=1, alpha=0.6, label="sin(τ)"
+        )
         axes[0].plot(steps, inputs, "o", label="u(τ) на шагах")
         axes[0].legend(loc="upper right")
     else:
         axes[0].plot(steps, inputs, marker="o")
+
     axes[0].set_title(
         f"Входное воздействие: {signal_names.get(signal, signal)}"
     )
@@ -85,16 +109,35 @@ def main():
 
     fig.tight_layout()
 
-    # PNG сразу в папку doc (на уровень выше src)
-    doc_dir = script_dir.parent / "doc"
+    doc_dir = (script_dir.parent / "doc").resolve()
     doc_dir.mkdir(exist_ok=True)
-    base_name = f"{model.replace(' ', '_')}_{signal}"
+
+    # Имена файлов выбираются только из заранее заданных вариантов.
+    safe_model_names = {
+        "Model 1.9": "Model_1.9",
+        "Model 2.1": "Model_2.1",
+        "Model 3.3": "Model_3.3",
+    }
+    safe_signal_names = {
+        "Step": "Step",
+        "Impulse": "Impulse",
+        "Harmonic": "Harmonic",
+    }
+
+    if model not in safe_model_names or signal not in safe_signal_names:
+        print("Ошибка: неизвестная модель или входное воздействие.")
+        plt.close(fig)
+        return 1
+
+    base_name = f"{safe_model_names[model]}_{safe_signal_names[signal]}"
     image_path = doc_dir / f"{base_name}.png"
     csv_copy = doc_dir / f"{base_name}.csv"
+
     fig.savefig(image_path, dpi=150, bbox_inches="tight")
-    if csv_path.resolve() != csv_copy.resolve():
+
+    if csv_path != csv_copy:
         shutil.copyfile(csv_path, csv_copy)
- 
+
     print(f"\nГрафик сохранён в файле: {image_path}")
     print(f"Таблица сохранена в файле: {csv_copy}")
 
