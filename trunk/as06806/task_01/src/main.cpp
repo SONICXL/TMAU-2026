@@ -1,8 +1,11 @@
+
 #include <iostream>
 #include <fstream>
 #include <locale>
 #include <iomanip>
 #include <memory>
+#include <string>
+#include <cmath>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -12,195 +15,149 @@
 
 using namespace std;
 
-int main(){
-#ifdef _WIN32
-    SetConsoleCP(65001);
-    SetConsoleOutputCP(65001);
-#endif
+bool readNumber(const string& prompt, double& value) {
+    cout << prompt;
 
-    int n;
-    int signalChoice;
-    int modelChoice;
-    
-    cout << "Введите количество шагов моделирования: ";
-    if(!(cin >> n)  || n <= 0) { 
-        cout << "Ошибка количество шагов должно быть положительным числом.";
-        return 1;
+    if (!(cin >> value) || !isfinite(value)) {
+        cout << "Ошибка: необходимо ввести конечное число.\n";
+        return false;
     }
 
-    cout << "\nВыберите модель:\n";
-    cout << "1 - Модель 1.9 (линейная)\n";
-    cout << "2 - Модель 2.1 (нелинейная)\n";
-    cout << "3 - Модель 3.3 (дифференциальная)\n";
-    cout << "Ваш выбор: ";
+    return true;
+}
 
-    if (!(cin >> modelChoice) || modelChoice < 1 || modelChoice > 3) {
-        cout << "Ошибка: выберите модель от 1 до 3.\n";
-        return 1;
-    }
+unique_ptr<Model> createModel(int choice, string& modelCsvName) {
+    double a;
+    double b;
+    double c;
+    double d;
+    double a1;
+    double a2;
+    double a3;
+    double b1;
+    double deltaT;
 
-    unique_ptr<Model> model;
-
-    string modelCsvName;
-
-    if (modelChoice == 1) {
-        double a1, a2, a3, b1;
-
+    switch (choice) {
+    case 1:
         cout << "\nНастройка модели 1.9\n";
 
-        cout << "Введите коэффициент a1: ";
-        if (!(cin >> a1)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
+        if (!readNumber("Введите коэффициент a1: ", a1) ||
+            !readNumber("Введите коэффициент a2: ", a2) ||
+            !readNumber("Введите коэффициент a3: ", a3) ||
+            !readNumber("Введите коэффициент b1: ", b1)) {
+            return nullptr;
         }
 
-        cout << "Введите коэффициент a2: ";
-        if (!(cin >> a2)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
-        }
-
-        cout << "Введите коэффициент a3: ";
-        if (!(cin >> a3)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
-        }
-
-        cout << "Введите коэффициент b1: ";
-        if (!(cin >> b1)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
-        }
-
-        model = make_unique<Model1_9>(a1, a2, a3, b1);
         modelCsvName = "Model 1.9";
-    }
+        return make_unique<Model1_9>(a1, a2, a3, b1);
 
-    else if (modelChoice == 2) {
-        double a, b, c, d;
-
+    case 2:
         cout << "\nНастройка модели 2.1\n";
 
-        cout << "Введите коэффициент a: ";
-        if (!(cin >> a)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
+        if (!readNumber("Введите коэффициент a: ", a) ||
+            !readNumber("Введите коэффициент b: ", b) ||
+            !readNumber("Введите коэффициент c: ", c) ||
+            !readNumber("Введите коэффициент d: ", d)) {
+            return nullptr;
         }
 
-        cout << "Введите коэффициент b: ";
-        if (!(cin >> b)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
-        }
-
-        cout << "Введите коэффициент c: ";
-        if (!(cin >> c)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
-        }
-
-        cout << "Введите коэффициент d: ";
-        if (!(cin >> d)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
-        }
-
-        model = make_unique<Model2_1>(a, b, c, d);
         modelCsvName = "Model 2.1";
-    }
+        return make_unique<Model2_1>(a, b, c, d);
 
-    else {
-        double a, b, deltaT;
-
+    case 3:
         cout << "\nНастройка модели 3.3\n";
 
-        cout << "Введите коэффициент a: ";
-        if (!(cin >> a)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
+        if (!readNumber("Введите коэффициент a: ", a) ||
+            !readNumber("Введите коэффициент b: ", b) ||
+            !readNumber("Введите шаг времени deltaT: ", deltaT)) {
+            return nullptr;
         }
 
-        cout << "Введите коэффициент b: ";
-        if (!(cin >> b)) {
-            cout << "Ошибка: необходимо ввести число.\n";
-            return 1;
-        }
-
-        cout << "Введите шаг времени deltaT: ";
-        if (!(cin >> deltaT) || deltaT <= 0.0) {
+        if (deltaT <= 0.0) {
             cout << "Ошибка: шаг времени должен быть больше нуля.\n";
-            return 1;
+            return nullptr;
         }
 
-        model = make_unique<Model3_3>(a, b, deltaT);
         modelCsvName = "Model 3.3";
+        return make_unique<Model3_3>(a, b, deltaT);
     }
 
+    return nullptr;
+}
 
-    cout << "\nВыберите входное воздействие:\n";
-    cout << "1 - Ступенчатое\n";
-    cout << "2 - Импульсное\n";
-    cout << "3 - Гармоническое\n";
+bool selectSignal(InputSignals& signal, string& signalCsvName) {
+    int choice;
 
-    if(!(cin >> signalChoice) || signalChoice < 1 || signalChoice > 3) {
+    cout << "\nВыберите входное воздействие:\n"
+         << "1 - Ступенчатое\n"
+         << "2 - Импульсное\n"
+         << "3 - Гармоническое\n"
+         << "Ваш выбор: ";
+
+    if (!(cin >> choice) || choice < 1 || choice > 3) {
         cout << "Ошибка: выберите вариант от 1 до 3.\n";
-        return 1;
+        return false;
     }
 
-    InputSignals signalType = static_cast<InputSignals>(signalChoice);
+    signal = static_cast<InputSignals>(choice);
 
-    string signalCsvName;
-
-    switch(signalType){
-
+    switch (signal) {
     case InputSignals::Step:
         signalCsvName = "Step";
         break;
-
     case InputSignals::Impulse:
         signalCsvName = "Impulse";
         break;
-
     case InputSignals::Harmonic:
         signalCsvName = "Harmonic";
         break;
     }
 
+    return true;
+}
+
+bool runSimulation(
+    Model& model,
+    int n,
+    InputSignals signal,
+    const string& modelCsvName,
+    const string& signalCsvName
+) {
     ofstream csv("result.csv", ios::out | ios::trunc);
     csv.imbue(locale::classic());
 
-    if(!csv.is_open()){
+    if (!csv.is_open()) {
         cout << "Ошибка: не удалось создать result.csv.\n";
-        return 1;
+        return false;
     }
 
     csv << "step,u_tau,y_next,model,signal\n";
     csv << setprecision(15);
 
-
-    cout << "\nМодель: " << model->getName() << "\n\n";
-
-    cout << setw(13) << "Шаг"
+    cout << "\nМодель: " << model.getName() << "\n\n"
+         << setw(13) << "Шаг"
          << setw(15) << "u(tau)"
-         << setw(15) << "y(tau+1)" << "\n";
-    cout << string(40, '-') << "\n";
-
+         << setw(15) << "y(tau+1)" << '\n';
+    cout << string(40, '-') << '\n';
     cout << fixed << setprecision(4);
 
-    for (int tau = 0; tau < n; ++tau){
-        double utau = calculateInput(tau, signalType);
-        double y = model->calculateNextStep(utau);
-        if(!isfinite(y) || fabs(y) > 1e9){
-            cout << "Ошибка: расчёт расходится (|y| > 1e9) на шаге " << tau + 1 << ". Измените коэффициенты модели.\n";
-            break;
+    for (int tau = 0; tau < n; ++tau) {
+        const double uTau = calculateInput(tau, signal);
+        const double y = model.calculateNextStep(uTau);
+
+        if (!isfinite(y) || fabs(y) > 1e9) {
+            cout << "Ошибка: расчёт расходится на шаге "
+                 << tau + 1
+                 << ". Измените коэффициенты модели.\n";
+            return false;
         }
 
         cout << setw(10) << tau + 1
-             << setw(15) << utau
+             << setw(15) << uTau
              << setw(15) << y << '\n';
 
         csv << tau + 1 << ','
-            << utau << ','
+            << uTau << ','
             << y << ','
             << modelCsvName << ','
             << signalCsvName << '\n';
@@ -208,7 +165,57 @@ int main(){
 
     csv.close();
 
+    if (!csv) {
+        cout << "Ошибка при записи результатов в result.csv.\n";
+        return false;
+    }
+
     cout << "\nРезультаты сохранены в result.csv\n";
-    
-    return 0;
+    return true;
+}
+
+int main() {
+#ifdef _WIN32
+    SetConsoleCP(65001);
+    SetConsoleOutputCP(65001);
+#endif
+
+    int n;
+    int modelChoice;
+
+    cout << "Введите количество шагов моделирования: ";
+
+    if (!(cin >> n) || n <= 0) {
+        cout << "Ошибка: количество шагов должно быть положительным числом.\n";
+        return 1;
+    }
+
+    cout << "\nВыберите модель:\n"
+         << "1 - Модель 1.9 (линейная)\n"
+         << "2 - Модель 2.1 (нелинейная)\n"
+         << "3 - Модель 3.3 (дифференциальная)\n"
+         << "Ваш выбор: ";
+
+    if (!(cin >> modelChoice) || modelChoice < 1 || modelChoice > 3) {
+        cout << "Ошибка: выберите модель от 1 до 3.\n";
+        return 1;
+    }
+
+    string modelCsvName;
+    auto model = createModel(modelChoice, modelCsvName);
+
+    if (!model) {
+        return 1;
+    }
+
+    InputSignals signal;
+    string signalCsvName;
+
+    if (!selectSignal(signal, signalCsvName)) {
+        return 1;
+    }
+
+    return runSimulation(
+        *model, n, signal, modelCsvName, signalCsvName
+    ) ? 0 : 1;
 }
