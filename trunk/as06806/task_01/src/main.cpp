@@ -80,9 +80,12 @@ unique_ptr<Model> createModel(int choice, string& modelCsvName) {
 
         modelCsvName = "Model 3.3";
         return make_unique<Model3_3>(a, b, deltaT);
-    }
 
-    return nullptr;
+
+    default:
+        cout << "Ошибка: неизвестный номер модели.\n";
+        return nullptr;
+    }
 }
 
 bool selectSignal(InputSignals& signal, string& signalCsvName) {
