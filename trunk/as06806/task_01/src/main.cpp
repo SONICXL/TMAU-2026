@@ -2,16 +2,21 @@
 #include <fstream>
 #include <locale>
 #include <iomanip>
-#include <windows.h>
 #include <memory>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "model.h"
 
 using namespace std;
 
 int main(){
+#ifdef _WIN32
     SetConsoleCP(65001);
     SetConsoleOutputCP(65001);
+#endif
 
     int n;
     int signalChoice;

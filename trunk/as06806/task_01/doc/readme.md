@@ -398,4 +398,4 @@ classDiagram
 |---|---|---|
 | 1 | Первая рецензия | https://github.com/brstu/TMAU-2026/pull/5#discussion_r4319880446 |
 | 2 | Вторая рецензия | https://github.com/brstu/TMAU-2026/pull/5#discussion_r4319919653 |
-| 3 | Pull request с лабораторной работой |  |
+| 3 | Pull request с лабораторной работой | https://github.com/brstu/TMAU-2026/pull/15 |
